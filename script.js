@@ -1,3 +1,83 @@
+// Consumo da API do learderboard
+const path = "https://dev-clicker-backend.up.railway.app";
+
+const headers = () => new Headers({
+  "Content-Type": "application/json",
+  "Accept": "application/json",
+});
+
+const request = (method, content) => {
+  const option = {
+    method,
+    headers: headers(),
+    mode: "cors"
+  };
+
+  if(method !== "GET") option.body = JSON.stringify(content);
+
+  return option;
+};
+
+// FUNÇÃO DE COLETAR O PLAYER, MAS ACESSANDO O BANCO DE DADOS
+// const getPlayer = async (id) => {
+//   return await 
+//   fetch(
+//     `${path}/player/${id}`, 
+//     request("GET"))
+//     .then(res => {
+//       if(!res.ok) throw new Error(`GET PLAYER ERROR: ${res.status}`);
+//       return res.json();
+//     })
+//     .then(res => {
+//       console.log(res);
+//     })
+//     .catch(err => {
+//       console.log("ERRO MESSAGEM:\n",err.message);
+//     });
+    
+// }
+//
+
+const postPlayer = async (name) => {
+  const body = {
+      name: name,
+      points: 0
+    };
+
+  const response = await
+  fetch(
+    `${path}/init-player/`,
+    request("POST", body)
+  ).then( res => {
+    if(!res.ok) throw new Error(`ERRO INESPERADO POST PLAYER: ${res.status}`);
+    return res.json();
+  })
+  .catch( err => console.error("ERROR:\n", err));
+  return response;
+}
+
+const updatePoints = async (points) => {
+  const body = {
+    id: localStorage.getItem("id"),
+    points,
+  }
+
+  console.log(body);  
+
+  return await
+  fetch(
+    `${path}/patch-points/`,
+    request("PATCH", body)
+  )
+  .then( res => {
+    if(!res.ok) throw new Error(`ERRO INESPERADO PATCH POINTS: ${res.status}`);
+    return res.json();
+  })
+  .catch( err => {
+    console.error("ERROR\n:", err);
+  });
+}
+
 // Upgrades "place holder" só para o código funcionar
 const upgrades = [
   {
@@ -138,7 +218,7 @@ const upgrades = [
     funcao: 'Cada clique gera o dobro de linhas.',
     icon: 'certificado.webp',
     // icon: 'placeholder.webp',
-    efeito: () => boost *= 1.5,
+    efeito: () => boost *= 2,
   },
   {
     nome: "Calculadora científica",
@@ -513,6 +593,26 @@ const notificacoes = {
 
 // Tabela de unidades para os números
 const unidades = [
+  { limite: 1e93, nome: 'trigintilhão', plural: 'trigintilhões' },
+  { limite: 1e90, nome: 'novenvigintilhão', plural: 'novenvigintilhões' },
+  { limite: 1e87, nome: 'octovigintilhão', plural: 'octovigintilhões' },
+  { limite: 1e84, nome: 'septenvigintilhão', plural: 'septenvigintilhões' },
+  { limite: 1e81, nome: 'sexvigintilhão', plural: 'sexvigintilhões' },
+  { limite: 1e78, nome: 'quinvigintilhão', plural: 'quinvigintilhões' },
+  { limite: 1e75, nome: 'quattuorvigintilhão', plural: 'quattuorvigintilhões' },
+  { limite: 1e72, nome: 'trevigintilhão', plural: 'trevigintilhões' },
+  { limite: 1e69, nome: 'duovigintilhão', plural: 'duovigintilhões' },
+  { limite: 1e66, nome: 'unvigintilhão', plural: 'unvigintilhões' },
+  { limite: 1e63, nome: 'vigintilhão', plural: 'vigintilhões' },
+  { limite: 1e60, nome: 'novendecilhão', plural: 'novendecilhões' },
+  { limite: 1e57, nome: 'octodecilhão', plural: 'octodecilhões' },
+  { limite: 1e54, nome: 'septendecilhão', plural: 'septendecilhões' },
+  { limite: 1e51, nome: 'sexdecilhão', plural: 'sexdecilhões' },
+  { limite: 1e48, nome: 'quindecilhão', plural: 'quindecilhões' },
+  { limite: 1e45, nome: 'quattuordecilhão', plural: 'quattuordecilhões' },
+  { limite: 1e42, nome: 'tredecilhão', plural: 'tredecilhões' },
+  { limite: 1e39, nome: 'duodecilhão', plural: 'duodecilhões' },
+  { limite: 1e36, nome: 'undecilhão', plural: 'undecilhões' },
   { limite: 1e33, nome: 'decilhão', plural: 'decilhões' },
   { limite: 1e30, nome: 'nonilhão', plural: 'nonilhões' },
   { limite: 1e27, nome: 'octilhão', plural: 'octilhões' },
@@ -533,10 +633,6 @@ function randomBetween(min, max) {
 function countEstruturas() {
   return estruturas.reduce((sum, obj) => sum + obj.comprados, 0)
 }
-
-const protocol = window.location.protocol === "https:" ? "wss://" : "ws://";
-const socket = new WebSocket(protocol + window.location.host + "/ws/leaderboard/");
-const csrfToken = window.csrfToken
 
 // Variaveis
 let id = -1
@@ -572,9 +668,8 @@ let defaultStats = {
   totalCoffees: 0,
 }
 let lpsHighest = 0;
-let statusPage;
 //let lbContentContainerStyle;
-let styleLbContainer;
+//let styleLbContainer;
 
 
 const button = document.getElementById('click_button') // Teclado CLICÁVEL
@@ -588,7 +683,7 @@ const boostsContainer = document.querySelector('.container-boosts') // Container
 const clicksContainer = document.querySelector('.clicks-container') // Container que armazena os pequenos incrementos dos cliques
 const tooltip = document.querySelector('.tooltip') // Container que armazenas as descrições quando passa o mouse por cima
 const mobileTooltip = document.querySelector('.mobile-tooltip') 
-const companyNameContainer = document.querySelector('.company-text')
+const companyName = document.querySelector('.company-text')
 const leaderboardWrapperContainer = document.querySelector('.leaderboard-wrapper')
 const lbContentContainer = document.querySelector('.leaderboard-content')
 const lpsPersecondContainer = document.querySelector('.lps-persecond')
@@ -600,7 +695,6 @@ const modalErrorContainer = document.querySelector('.modal-error') // Container 
 const bulkButtons = document.querySelectorAll('.bulk') // Botões de compra em massa (x1, x10, x100)
 const tap = document.querySelector('.tap') // Ícone que aparece quando clica no botão
 const statsContainer = document.querySelector('.stats');
-const loadingScreen = document.querySelector('.loading-screen');
 
 
 // PRELOAD (CACHE)
@@ -612,7 +706,7 @@ function preloadIcons(iconList) {
   const promises = iconList.map(icon => {
     return new Promise((resolve, reject) => {
       const img = new Image();
-      img.src = `/static/assets/icons/${icon}`;
+      img.src = `./assets/icons/${icon}`;
       img.onload = () => resolve({ icon, status: 'loaded' });
       img.onerror = () => reject({ icon, status: 'error' });
       iconCache[icon] = img;
@@ -624,7 +718,7 @@ function preloadIcons(iconList) {
 
 // Função que define a imagem de um elemento img com base no ícone, procurando no cache
 function setImg(img, icon) {
-  const newSrc = `/static/assets/icons/${icon}`
+  const newSrc = `./assets/icons/${icon}`
 
   if (img.src !== location.origin + newSrc) {
     if (iconCache[icon]) {
@@ -639,18 +733,13 @@ const images = estruturas.map(e => e.icon).concat(upgrades.map(u => u.icon)).con
 
 const preloadPromise = preloadIcons(images)
 
-function closeLoading() {
-  if(statusPage != "pause") loadingScreen.classList.add('invisible');
-}
-
 // FIM PRELOAD
 
-// ESTRUTURAS QUE MANDA EVENTOS
-
-//Atualização o arquivo em outros arquivos js
+//Atualização do arquivo em outros arquivos js
 function atualizarPontos(novoValor) {
-  // Dispara um evento personalizado com o novo valor
-
+  // Salva no localStorage
+  localStorage.setItem('playerPoints', novoValor)
+  
   const newPoints = Number(novoValor).toFixed(0);
   const newHighestPoint = Number(lpsHighest).toFixed(0);  
 
@@ -661,193 +750,9 @@ function atualizarPontos(novoValor) {
   window.dispatchEvent(evento); // Notifica outros scripts
 }
 
-// LEADERBOARD
+// LEADERBOARD - DESABILITADO (Aplicação Web Pura)
 
-addSafeTouchListener(leaderboardWrapperContainer, toggleMobileLeaderboard)
-
-lbContentContainer.addEventListener("transitionend", (e) => {
-  if (e.propertyName === "opacity" && getComputedStyle(lbContentContainer).opacity != 1) {
-    leaderboardWrapperContainer.classList.remove('enabled')
-  }
-})
-
-if (!window.matchMedia('(pointer: coarse)').matches) {
-  leaderboardWrapperContainer.addEventListener("transitionend", (e) => {
-    if (e.propertyName === "transform" && leaderboardWrapperContainer.classList.contains('out')) {
-        leaderboardWrapperContainer.classList.remove('visible')
-        leaderboardWrapperContainer.classList.remove('out')
-    }
-  })
-}
-
-leaderboardWrapperContainer.addEventListener('mouseenter', (e) => {
-  if (window.matchMedia('(pointer: coarse)').matches) return
-  leaderboardWrapperContainer.classList.add('visible')
-  leaderboardWrapperContainer.classList.remove('out')
-  playSound(`/static/assets/sounds/lb-in.mp3`, .4)
-})
-
-leaderboardWrapperContainer.addEventListener('mouseleave', (e) => {
-  if (window.matchMedia('(pointer: coarse)').matches) return
-    leaderboardWrapperContainer.classList.add('out')
-  playSound(`/static/assets/sounds/lb-out.mp3`, .4)
-})
-
-function toggleMobileLeaderboard(e) {
-  const touchedContent = e.target.closest('.leaderboard-content')
-  if (touchedContent) return
-
-  const isEnabled = leaderboardWrapperContainer.classList.contains('enabled')
-
-  if (isEnabled) {
-    lbContentContainer.style.opacity = 0
-    leaderboardWrapperContainer.style.background = 'transparent'
-    playSound(`/static/assets/sounds/lb-out.mp3`, .4)
-
-  } else {
-    leaderboardWrapperContainer.classList.toggle('enabled')
-    void lbContentContainer.offsetWidth
-    lbContentContainer.style.opacity = 1
-    leaderboardWrapperContainer.style.background = 'var(--bs)'
-    playSound(`/static/assets/sounds/lb-in.mp3`, .4)
-  }
-}
-
-window.addEventListener('dispatchLeaderboard', (e) => {
-  if(statusPage != "pause") return renderLeaderboard(e.detail.lb);
-
-})
-
-function requestLeaderboard() {
-    const event = new CustomEvent("requestLeaderboard")
-
-    window.dispatchEvent(event);
-}
-
-function renderLeaderboard(jogadores) {
-  console.log(jogadores);
-  jogadores = jogadores.map((j, i) => ({...j, pos: i+1}))
-  const yourPlayer = jogadores.find(j => j.id == idPlayer);
-
-  const container = document.querySelector(".leaderboard-content>ul");
-  const prevPos = document.querySelector('.lb--prev-pos')
-
-  prevPos.textContent = yourPlayer?.pos
-  prevPos.className = `lb--prev-pos lb-${yourPlayer?.pos}`
-
-  let topJogadores = jogadores.slice(0, Math.min(jogadores.length, 11))
-
-  const hasPlayerInTop = topJogadores.some(j => j.id == idPlayer)
-  if (!hasPlayerInTop) {
-    const newPlayer = {
-      id: idPlayer,
-      companyName: company,
-      lsCount: pontos,
-      pos: yourPlayer?.pos
-    }
-    topJogadores = [...topJogadores.slice(0, Math.min(jogadores.length, 10)), newPlayer]
-  }
-
-  container.childNodes.forEach(j => {
-    const jID = j.id
-    if (!topJogadores.find(tj => tj.id == jID)) j.remove()
-  })
-
-  topJogadores.forEach((jogador, index) => {
-    const jogadorEl = document.getElementById(jogador.id)
-    const isYou = jogador.id == idPlayer
-    const pos = jogador.pos
-
-
-    if (jogadorEl) {
-      const pointsEl = jogadorEl.querySelector('.lb-number')
-      const posEl = jogadorEl.querySelector('.lb-pos')
-
-      jogadorEl.style.order = pos
-      jogadorEl.style.transform = `translateY(${index*100}%)`
-      jogadorEl.style.zIndex = pos >= 11 ? 200 : 200-pos
-      pointsEl.textContent = formatarNumero(jogador.lsCount)
-      posEl.textContent = pos
-      posEl.className = `lb-pos lb-${pos} ${pos >= 11 ? 'lb-last': ''}`
-
-      return
-    }
-
-    const li = document.createElement("li");
-
-    if (isYou) li.className = 'you'
-    li.id = jogador.id
-    li.style.order = pos
-    li.style.zIndex = pos >= 11 ? 200 : 200-pos
-    li.innerHTML = `
-      <span class="lb-pos lb-${pos} ${pos >= 11 ? 'lb-last': ''}">${pos}</span>
-      <span class="lb-name">${jogador.companyName}${isYou ? ' <strong style="font-size: .7em">(VOCÊ)</strong>' : ''}</span>
-      <span class="lb-number">${formatarNumero(jogador.lsCount)}</span>
-    `
-
-    container.appendChild(li);
-
-    li.style.transform = `translateY(2000%)`
-    void li.offsetWidth
-    li.style.transform = `translateY(${index*100}%)`
-  })
-}
-
-// Socket para parar o jogo
-socket.onmessage = async (e) => {
-  //lbContentContainerStyle = lbContentContainer.style;
-  // ESTRUTURA = {id, companyName, lsCount}
-  statusPage = await JSON.parse(e.data).status;
-  if(statusPage == "pause"){
-    styleLbContainer = lbContentContainer.style;
-    loadingScreen.classList.remove('invisible');
-    let newDiv = document.createElement("div");
-    newDiv.className = "leaderboardEnd";
-    newDiv.id = "leaderboardEnd";
-    newDiv.style.display = "fixed";
-    newDiv.appendChild(lbContentContainer);
-    loadingScreen.replaceChildren(newDiv)
-    lbContentContainer.style.fontSize = "1.5em";
-    newDiv.style.width = "95%";
-    newDiv.style.height = "95%";
-    newDiv.style.display = 'flex'
-    newDiv.style.alignItems = 'center'
-    newDiv.style.justifyContent = 'center'
-    void lbContentContainer.offsetWidth;
-    lbContentContainer.style.opacity = 1;
-    lbContentContainer.style.display = "block";
-    lbContentContainer.style.visibility = "visible";
-    lbContentContainer.style.maxWidth = "350px";
-    lbContentContainer.style.width = '100%'
-    lbContentContainer.style.maxHeight = "100%";
-    lbContentContainer.style.height = "560px";
-    lbContentContainer.style.margin = "auto";
-    lbContentContainer.style.border = "var(--c1b)";
-    lbContentContainer.style.backgroundColor = "var(--c3)";
-    void lbContentContainer.offsetWidth;
-
-    if(user =="codelab-admin"){
-      let resume = document.createElement("button");
-      resume.className = "resume";
-      resume.id = "resume";
-      resume.textContent = "VOLTAR";
-      loadingScreen.appendChild(resume);
-
-      document.querySelector(".resume").addEventListener("click", resumeGame);
-    }
-
-  } else if (statusPage == "resume") {
-    await runningGame();  // Agora o await funciona de verdade
-    console.log("Game voltou para running. Agora posso seguir...");
-    window.location.reload(); // só se realmente for necessário
-  }
-
-  
-  
-
-}
-
-// FIM DO LEADERBOARD
+// Leaderboard functions deprecated - all data stored locally now
 
 // INÍCIO DOS STATS
 
@@ -892,14 +797,14 @@ function toggleStats() {
   if (isEnabled) {
     itemsModal.style.opacity = 0
     itemsModal.classList.add('closing')
-    playSound(`/static/assets/sounds/lb-out.mp3`, .4)
+    playSound(`./assets/sounds/lb-out.mp3`, .4)
   } else {
     itemsModal.classList.toggle('enabled')
     itemsModal.classList.remove('closing')
     renderStats()
     void itemsModal.offsetWidth
     itemsModal.style.opacity = 1
-    playSound(`/static/assets/sounds/lb-in.mp3`, .4)
+    playSound(`./assets/sounds/lb-in.mp3`, .4)
   }
 }
 
@@ -961,31 +866,32 @@ setScrollShadows(itemsModal.querySelector('.item-upgrades--container'))
 
 // FIM DOS STATS
 
-// Pega o nome do player
-window.addEventListener("updateCompany", (e) => {
-  company = e.detail.company
+// Pega o nome do player (LOCAL)
+async function setPlayerName(name) {
+  company = name
   companyName.textContent = company
+  const response = await postPlayer(name);
+  localStorage.setItem('playerName', name);
+  localStorage.setItem('id', response.id);
   
-})
+}
 
-// PEGA DO BACKEND TODOS OS DADOS DO PLAYER
-
-window.addEventListener("dispatchPlayerData", (event) => {
-  //Coleta os dados do player e coloca em variáveis e postam no index
-  let loadingPlayer = event.detail.player
-  company = loadingPlayer.companyName
-  companyName.textContent = company
-
-  lpsHighest = Number(loadingPlayer.lsHighest);
-
+// Carrega os dados do player do localStorage (PURA WEB)
+function loadPlayerData() {
+  const savedName = localStorage.getItem('playerName')
+  const savedPoints = localStorage.getItem('playerPoints')
   const statsSaved = JSON.parse(localStorage.getItem('stats'))
-
-  // Verifica quais estrutras e upgrades estão salvos e atualiza da lista principal
+  
+  if (savedName) {
+    company = savedName
+    companyName.textContent = company
+  }
+  
+  // Carrega estruturas e upgrades comprados
   listUpgrades = JSON.parse(localStorage.getItem("upgrades"))?.salve || []
   listStructures = JSON.parse(localStorage.getItem("estruturas"))?.salve || []
 
   if (statsSaved) defaultStats = statsSaved
-  
 
   listUpgrades.forEach(item => {
     upgrades.forEach((upgrade, index) => {
@@ -1007,17 +913,13 @@ window.addEventListener("dispatchPlayerData", (event) => {
     })
   })
 
+  if (savedPoints) {
+    refresh(Number(savedPoints), true)
+  }
+}
 
-
-  refresh(loadingPlayer.lsCount, true)
-})
-
-// Traz os dados do leaderboard do backend na primeira execução
-window.addEventListener("dispatchLearderboardData", (event)=>{
-  // ESTRUTURA = {id, companyName, lsCount}
-  let leaderboardInfo = event.detail.leaderboardData;
-  renderLeaderboard(leaderboardInfo, 0, companyName, pontos);
-})
+// Removed - using localStorage instead
+// (Leaderboard functionality removed for pure web app)
 
 history.pushState(null, null, window.top.location.pathname + window.top.location.search);
 window.addEventListener('popstate', (e) => {
@@ -1026,15 +928,8 @@ window.addEventListener('popstate', (e) => {
   history.pushState(null, null, window.top.location.pathname + window.top.location.search)
 })
 
-// Atualizar os upgrades, puxar as estruturas salvas no banco de dados
-window.addEventListener("dispatchUpdateList", (event) => { 
-  let loadingUpdateList = event.detail.updateList; // o index do upgrade é retornado
-})
-
-// Atualiza as estruturas, puxar as estruturas salvas do banco de dados
-window.addEventListener("dispatchStructList", (event)=> {
-  let loadingStructList = event.detail.structList; // retorna o index da estrutra e quantas delas foram comprados
-})
+// Removed - using localStorage instead
+// (All data updates stored locally)
 
 // USAR ESSA FUNÇÃO PARA ATUALIZAR OS PONTOS
 // valorAtual = pontos em seu estado ATUAL / add = o incremento que será adicionado (ou subtraído)
@@ -1155,7 +1050,7 @@ function atualizarIndicadores() {
   upgradesBtn.classList.toggle("has-notification", notificacoes.upgrades.size > 0)
   estruturasBtn.classList.toggle("has-notification", notificacoes.estruturas.size > 0)
 
-  if ((notificacoes.upgrades.size > 0 && tabActive != 'Upgrades') || (notificacoes.estruturas.size > 0 && tabActive != 'Estruturas')) playSound('/static/assets/sounds/not.mp3', .4)
+  if ((notificacoes.upgrades.size > 0 && tabActive != 'Upgrades') || (notificacoes.estruturas.size > 0 && tabActive != 'Estruturas')) playSound('./assets/sounds/not.mp3', .4)
 }
 
 function addSafeTouchListener(element, onValidTouchEnd) {
@@ -1193,6 +1088,19 @@ button.addEventListener('click', (e) => {
 
 })
 
+document.addEventListener('keydown', (e) => {
+  if (e.repeat || e.key == 'return') return
+
+  const padding = 10
+  const rect = button.getBoundingClientRect()
+  const coords = {
+    x: rect.left + randomBetween(padding, rect.width - padding),
+    y: rect.top + randomBetween(padding, rect.height - padding),
+  }
+  handleClick(coords)
+  triggerAnimation()
+})
+
 button.addEventListener('touchstart', (e) => {
   const currentTouch = [...e.touches].at(-1)
   const coords = {
@@ -1219,7 +1127,7 @@ function handleClick({x, y}) {
   click.classList.add('fading-up')
 
 
-  playSound(`/static/assets/sounds/k${randomBetween(1, 3)}.mp3`, .4)
+  playSound(`./assets/sounds/k${randomBetween(1, 3)}.mp3`, .4)
 
   click.addEventListener("transitionend", (e) => {
     if (e.propertyName === "opacity" && click.classList.contains("fading-up")) click.remove()
@@ -1403,7 +1311,7 @@ function showMobileTooltip(type, item, touched = true) {
     bn: 'Bônus'
   }
 
-  if (touched) playSound('/static/assets/sounds/open.mp3', .4)
+  if (touched) playSound('./assets/sounds/open.mp3', .4)
 
   const mobileTitle = mobileTooltip.querySelector('.mobile-tooltip--title')
   const wrapper = mobileTooltip.querySelector(`.mobile-tooltip--wrapper`)
@@ -1524,7 +1432,7 @@ close.addEventListener('click', (e) => {
   closeMobileTootip()
   mobileTooltip.classList.add('closing')
   mobileTooltipItem = {type: '', item: null} // Reseta o item
-  playSound('/static/assets/sounds/close.mp3', .8)
+  playSound('./assets/sounds/close.mp3', .8)
 })
 
 
@@ -1534,7 +1442,7 @@ bulkButtons.forEach((btn) => {
   btn.addEventListener('click', () => {
     if (btn.classList.contains('active')) return
 
-    playSound(`/static/assets/sounds/tab.mp3`, .5)
+    playSound(`./assets/sounds/tab.mp3`, .5)
 
     bulkButtons.forEach((b) => b.classList.remove('active')) // Primeiro, remove "active" de todos
     btn.classList.add('active') // Depois, adiciona somente no que foi clicado
@@ -1557,7 +1465,7 @@ buttonsHeader.forEach((btn) => {
       notificacoes.estruturas.clear()
       atualizarIndicadores()
 
-      playSound(`/static/assets/sounds/tab.mp3`, .5)
+      playSound(`./assets/sounds/tab.mp3`, .5)
       // Através do conteúdo, verifica qual botão foi clicado
       tabActive = btn.querySelector('.text').textContent
       if (tabActive == 'Upgrades') renderUpgrades() // Irá renderizar UPGRADES
@@ -1785,7 +1693,7 @@ const buyEstrutura = (id) => {
   if (quantidadeComprada > 0) {
     estrutura.comprados += quantidadeComprada;
     refresh(-custo);
-    playSound(`/static/assets/sounds/b${randomBetween(1, 2)}.mp3`, .5);
+    playSound(`./assets/sounds/b${randomBetween(1, 2)}.mp3`, .5);
   } else {
     // Se não for possível comprar nenhuma, a função simplesmente retorna
     return;
@@ -1803,7 +1711,7 @@ const buyUpgrade = (id) => {
 
   refresh(-upgrade.custo)
   
-  playSound(`/static/assets/sounds/b${randomBetween(1, 2)}.mp3`, .5)
+  playSound(`./assets/sounds/b${randomBetween(1, 2)}.mp3`, .5)
 
   return true
 }
@@ -1863,7 +1771,7 @@ function spawnCoffee (bonusId = null, duracao = 2500)  {
       setBonus(bonus) // Coloca o bônus na tela
       spawnAlert(x, y)
       
-      playSound(`/static/assets/sounds/coffee.mp3`, .5)
+      playSound(`./assets/sounds/coffee.mp3`, .5)
       div.remove() // Remove o café
     })
 }
@@ -2054,7 +1962,7 @@ const startMatrix = (id = 0, type = 'matrix', expiresIn) => {
 
   if (!currentMusic) {
     setTimeout(() => {
-      playMusic(`/static/assets/music/matrix.mp3`, .04, true)
+      playMusic(`./assets/music/matrix.mp3`, .04, true)
     }, 200)
   }
   // Cria canvas
@@ -2204,8 +2112,7 @@ const custoAtual = (el) => Math.floor(el.custoBase * Math.pow(1.15, el.comprados
 const timing = 0.1
 
 function gerarPassivamente() {
-  if(statusPage != "pause"){
-    let totalGerado = 0;
+  let totalGerado = 0;
 
   estruturas.forEach(estrutura => {
     const geradoPorEssa = estrutura.lps * estrutura.comprados * lpsMultiplier * timing
@@ -2213,12 +2120,10 @@ function gerarPassivamente() {
     totalGerado += geradoPorEssa
   })
 
-
   if (totalGerado == 0) return
   lpsTOT = totalGerado / (timing || 1)
   lpsPersecondContainer.textContent = `linhas p/ segundo: ${formatarNumero(lpsTOT.toFixed(1))}` 
   refresh(totalGerado)
-  }
 }
 
 setInterval(gerarPassivamente, 1000*timing)
@@ -2331,7 +2236,7 @@ function stopMusic(useFade = true, fadeDuration = 1000) {
 
 // FIM DA FUNÇÃO SOM
 
-// INICIO DO MODAL
+// MODAL
 
 modalContainer.addEventListener("transitionend", (e) => {
     if (e.propertyName === "opacity" && !modalContainer.classList.contains("disabled")) modalContainer.classList.add('disabled')
@@ -2350,41 +2255,19 @@ modalForm.addEventListener('submit', (e) => {
   e.preventDefault()
 
   const inputName = modalInput.value
+  
+  if (inputName.trim() === '') {
+    modalErrorContainer.textContent = 'Por favor, digite um nome para sua empresa!'
+    return
+  }
 
-  const event = new CustomEvent("submitName", {
-    detail: { newName: inputName }
-  });
-
-  window.dispatchEvent(event); // Notifica outros scripts
+  setPlayerName(inputName)
+  closeModal()
+  startGame()
 })
 
-window.addEventListener('submitError', (e) => {
-  if (modalContainer.classList.contains("disabled")) modalContainer.classList.remove("disabled");
-  modalErrorContainer.textContent = e.detail.error;
-  modalInput.value = ''
-})
-
-const submitPromise = new Promise((resolve) => {
-  if (!idPlayer) { resolve() }
-
-  window.addEventListener('submitError', (e) => {
-    resolve();
-  })
-
-  window.addEventListener('submitSucess', (e) => {
-    company = e.detail.companyName;
-    companyName.textContent = company;
-    modalErrorMessage = '';
-    closeModal();
-    startGame();
-    if (e.detail.hasToRenderLb) requestLeaderboard();
-
-    resolve(); // Finaliza a promise quando tudo do evento acabar
-  })
-})
-
-// VERIFICAR SE A PÁGINA FOI CARREGADA
-//Seta o data no localStorage
+// VERIFY IF PAGE WAS LOADED - Save to localStorage
+// Sets the data in localStorage
 function setData(){
   if (debug) return
 
@@ -2411,6 +2294,7 @@ function setData(){
   localStorage.setItem("upgrades", JSON.stringify({salve: listPatchUpgrades}));
   localStorage.setItem("estruturas", JSON.stringify({salve: listPatchStructures}));
   localStorage.setItem('stats', JSON.stringify(defaultStats))
+  localStorage.setItem('playerPoints', pontos)
 }
 
 // Toda vez que atualizar a página, ele atualiza os dados
@@ -2434,7 +2318,6 @@ document.addEventListener('touchmove', e => {
   if (diff > 50 && window.scrollY === 0) {
     atualizarPontos(pontos)
     setData()
-    // aqui você pode executar lógica antes de chamar reload
   }
 }, { passive: false });
 
@@ -2446,7 +2329,6 @@ function startGame() {
   gameInterval = setInterval(() =>{
     setData();
     atualizarPontos(pontos);
-    requestLeaderboard()
   }, 1000 * 5);
 
   const setCoffeeInterval = () => {
@@ -2469,29 +2351,49 @@ function endGame() {
   coffeeInterval = null
 }
 
-function reset(linesToo = true, cookiesToo = true) {
+async function reset(linesToo = true, cookiesToo = true) {
   debug = true
-  localStorage.removeItem('upgrades')
-  localStorage.removeItem('estruturas')
-  localStorage.removeItem('stats')
+  localStorage.removeItem('upgrades');
+  localStorage.removeItem('estruturas');
+  localStorage.removeItem('stats');
+  localStorage.removeItem('playerName');
+  localStorage.removeItem('playerPoints');
+  await deletePlayer(localStorage.getItem("id"));
+  localStorage.removeItem('id');
+
   if (linesToo) {
     refresh(-pontos)
     atualizarPontos(pontos)
-  }
-  if (cookiesToo) {
-    document.cookie.split(";").forEach(cookie => {
-      const nome = cookie.split("=")[0].trim()
-      document.cookie = `${nome}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/`
-    })
   }
 
   location.reload()
 }
 
-Promise.all([preloadPromise, submitPromise])
+preloadPromise
   .then(() => {
-    closeLoading();
+    // Load player data from localStorage
+    loadPlayerData()
+
+    const savedName = localStorage.getItem('playerName')?.trim()
+
+    // Se já houver nome salvo, inicia direto e mantém modal fechado
+    if (savedName) {
+      modalContainer.classList.add('disabled')
+      modalContainer.style.opacity = 0
+      startGame()
+      return
+    }
+
+    // Caso contrário, exibe modal para capturar o nome
+    modalContainer.classList.remove('disabled')
+    void modalContainer.offsetHeight
+    modalContainer.style.opacity = 1
   })
   .catch((err) => {
     console.error('Erro em uma das operações:', err);
   });
+
+setInterval(()=>{
+  updatePoints(pontos);
+  getLeaderboard();
+}, 2500);

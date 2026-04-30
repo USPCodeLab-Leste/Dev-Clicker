@@ -1,112 +1,110 @@
-# INSTALAÇÃO E RODAR O SERVIDOR
+<div align="center">
 
-## SETUP
+# Dev Clicker
 
-### Criação e ativação do ambiente
-Executar no terminal na pasta do projeto
-```
-python3 -m venv .venv
+<p>
+	<img src="assets/pc.ico" width="96" height="96" alt="Dev Clicker icon" />
+</p>
 
-source .venv/bin/activate # ativar no linux ou mac
-.\.venv\Scripts\activate  # ativer no windows
-```
+Um idle/clicker game para devs – gere linhas de código, compre upgrades e evolua sua “empresa”! 💻☕
 
-### INSTALAÇÃO DAS BIBLIOTECAS
-Executar no terminal na pasta do projeto
-```
-pip install -r requirements.txt
-```
+</div>
 
-## INICIALIZAÇÃO DO SERVIDOR
+## Visão Geral
 
-### Criação do banco de dados e carregar as configurações
+O Dev Clicker é um jogo single‑player que roda 100% no navegador, inspirado no tão querido e aclamado Cookie Clicker. Você começa clicando (ou tocando) para gerar linhas de código, desbloqueia estruturas que produzem automaticamente (LpS) e ativa bônus de café com efeitos especiais. O progresso é salvo automaticamente no seu dispositivo.
 
-Executar no terminal, com o ambiente inicializado e na pasta em que se encontra o manage.py
-```
-# Executar os dois em sequência, um vai verificar as migrações e outros irá fazer as migrações
-python manage.py makemigrations
-python manage.py migrate
-```
+## Destaques
 
-### Inicializar server
-Executar no terminal na pasta em que se encontra o manage.py, com o ativado
+- Simples de rodar: apenas HTML, CSS e JavaScript puro (sem backend)
+- Salvamento automático via localStorage (persistência entre sessões)
+- Upgrades, estruturas e bônus (inclui cafés com efeitos instantâneos e temporários)
+- UI com tooltips ricas (desktop e mobile) e animações
+- Efeitos sonoros e música com controle de reprodução
 
-```
-python manage.py runserver
+## Como experimentar rapidamente
+
+Escolha uma das opções abaixo.
+
+1) Servidor Python embutido no sistema (recomendado)
+
+```bash
+python -m http.server 8000
 ```
 
-Em outro, com a mesma configuração
-```
-# Esse aqui é um facilitador, em que toda vez que se atualiza algo ele atualiza automaticamente a tela
-python manage.py livereload
-```
+Depois abra http://localhost:8000 no navegador e acesse o arquivo `index.html` na raiz do projeto.
 
-## CRIAR O ARQUIVO .ENV
-No ambiente de produção, há dados que precisam ser escondidas, e o render requesita que tenha esses dados.
-Eles são as variávies de ambiente, que estão definidas no **.env**, e, para ambientes de teste, precisam dela para que não ocorra nenhum erro na hora de enviar para produção.
+2) Node.js (http-server)
 
-
-# DICAS DE DESENVOLVIMENTO
-
-## BACKEND
-
-Qualquer modificação nas configurações de servidor, rota etc., rodar no terminal com o ambiente ativo e na pasta de manage.py:
-```
-python manage.py makemigrations
-python manage.py migrate
+```bash
+npx http-server -p 8000
 ```
 
-## FRONTEND
+3) VS Code – Live Server (extensão)
 
-Os arquivos estáticos são "localizados" na pasta /static/ para o servidor. Por conta disso, passar os arquivos da maneira convencional ("./pasta/arquivo.png") não funciona, precisando fazer algumas coisas.
+- Abra a pasta do projeto e clique em “Go Live” para servir a raiz.
 
-** NO PROJETO, O STATIC FOI DEFINIDO NA RAIZ (/static/)**
+4) Modo direto (menos recomendado)
 
-### HTML
-No html, no seu início, colocar:
-```
-{ % load static % }
-```
+- Abra o arquivo `index.html` no navegador. Em alguns ambientes, recursos como áudio podem se comportar melhor com um servidor local (opções 1–3).
 
-E ao chamar os arquivos:
+## Controles e mecânicas
 
-```
-<img src="{ % static "pasta/imagem.png" % }" />
-<script src="{ % staic "script.js" % }"></script.js>
-```
+- Clique/toque no teclado para gerar linhas de código (cliques podem entrar em “combo”)
+- Compre estruturas para produzir LpS automaticamente
+- Os bônus de café aparecem aleatoriamente – clique rápido para ativar!
+- Tooltips mostram custos, efeitos e estatísticas de cada item
 
-### HTML SEM O {% LOAD STATIC %} (NÃO RECOMENDÁVEL)
-Pode-se usar:
-```
-<img src="/static/assets/placeholder.png" />
-<img src="/static/placeholder.png"/>
-```
+## Salvamento e reset
 
-### JAVASCRIPT
+Os dados ficam no localStorage do navegador:
 
-Aqui, de maneira mais rápida e sem ajuste técnico, pode-se:
+- `playerName`: nome da empresa
+- `playerPoints`: total de linhas
+- `upgrades`: upgrades comprados
+- `estruturas`: estruturas compradas
+- `stats`: estatísticas de jogo
 
-```
+Para resetar, use o console do navegador (F12):
 
-imagem.innerHTML = `<img src"/static/pasta/imagem.png"/ >`
-imagem.innerHTML = `<img src"/static/imagem.png"/ >`
-
+```js
+localStorage.clear();
+location.reload();
 ```
 
-Sem modificar o html, pode-se usar direto:
+## Estrutura do projeto (essencial)
 
 ```
-./pasta/arquivo
-./arquivo
-```
-** Só não pode usar o dois pontos, caso o arquivo esteja na raiz, pois irá para o endereço do servidor, não encontrando nenhum arquivo estático **
-
-### CSS
-Se o código não adicionar nenhum endereço no html, pode-se
-
-```
-./pasta/arquivo
-./arquivo
+Dev-Clicker/
+├─ backend
+|  ├─ api.js 			 # Rotas e lógicas
+|  ├─ connectbd.js		 # Conexão com o banco de dados
+|  └─ query.js 			 # Queries do banco de dados
+├─ index.html            # Página principal (raiz do projeto)
+├─ style.css             # Estilos do jogo
+├─ script.js             # Lógica principal do jogo
+└─ assets
 ```
 
+## Roadmap (ideias)
 
+- Melhorar acessibilidade (teclado e leitores de tela)
+- Mais tipos de bônus e eventos aleatórios
+- Sistema de achievements/medalhas
+- Tela de “New Game+” e balance refinado de custos
+
+## Contribuindo
+
+1. Faça um fork do repositório
+2. Crie um branch: `git checkout -b feature/sua-feature`
+3. Commit: `git commit -m "feat: descreva sua mudança"`
+4. Push: `git push origin feature/sua-feature`
+5. Abra um Pull Request 🧑‍💻
+
+## Contribuintes
+- [Caique Costa](https://github.com/ccostafrias) - Front-end;
+- [Caique Sidrão](https://github.com/webcaique) - Back-end.
+
+## Agradecimentos
+
+Obrigado a quem jogar, reportar bugs ou sugerir melhorias. Cafézinho ajuda a compilar ideias! ☕
